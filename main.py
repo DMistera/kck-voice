@@ -7,6 +7,7 @@ import sys
 from numpy.linalg import norm
 from dtw import dtw
 import os.path
+import numpy as np
 
 template_m = ["002_M.wav", "004_M.wav"]
 template_k = ["001_K.wav", "003_K.wav"]
@@ -18,7 +19,12 @@ def getMFCC(path):
 def diff(path1, path2):
     mfcc1 = getMFCC(path1)
     mfcc2 = getMFCC(path2)
-    return dtw(mfcc1.T, mfcc2.T, dist=lambda x, y: norm(x - y, ord=1))[0]
+    dist, cost, acc_cost, path = dtw(mfcc1.T, mfcc2.T, dist=lambda x, y: norm(x - y, ord=1))
+    plt.imshow(acc_cost.T, origin='lower', cmap='gray', interpolation='nearest')
+    plt.title(path1 + " vs " + path2)
+    plt.plot(path[0], path[1], 'w')
+    #plt.show()
+    return dist / np.sqrt(len(cost)^2 + len(cost[0])^2)
 
 def detectGender(path):
     minDiff = 99999999

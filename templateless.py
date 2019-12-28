@@ -8,6 +8,7 @@ import numpy as np
 from numpy import argmax, mean, diff, log, nonzero
 from numpy.fft import rfft
 import sys
+import os.path
 from numpy.linalg import norm
 from dtw import dtw
 
@@ -16,7 +17,7 @@ template_k = "001_K.wav"
 
 def load(path):
     sig, fs = librosa.load(path)
-    sig = filterFreq(sig)
+    #sig = filterFreq(sig)
     return (sig, fs)
 
 def filterFreq(sig):
@@ -47,14 +48,10 @@ def funfreq(sig, fs):
     return fs / px
 
 def calcMeanFunFreq(sig, fs):
-    split = np.split(sig, 50)
-    freqs = [funfreq(s, fs) for s in split]
-    return np.mean(freqs)
-
-def calcMeanfun(sig, fs):
-    freqs = funfreq(sig, fs)
-    #filtered = [f for f in freqs if f <= 280]
-    return np.mean(freqs)
+    # split = np.array_split(sig, len(sig)*fs/100)
+    # freqs = [funfreq(s, fs) for s in split]
+    # return np.mean(freqs)
+    return funfreq(sig, fs)
 
 def calcIqr(sig, fs):
     spec = np.abs(np.fft.rfft(sig))
@@ -70,20 +67,37 @@ def calcIqr(sig, fs):
 
 def detectGender(path):
     sig, fs = load(path)
-    meanfun = calcMeanfun(sig, fs)
+    meanfun = calcMeanFunFreq(sig, fs)
     iqr = calcIqr(sig, fs)
     print("Meanfun: " + str(meanfun));
     print("IQR: " + str(iqr));
     if meanfun > 140:
-        if iqr > 700:
-            return 'M'
-        else:
-            return 'K'
-    else:
         return 'K'
+    else:
+        return 'M'
 
 windowMFCC = 512
 windowFFT = 512
+
+if(len(sys.argv) > 1):
+    print(detectGender(sys.argv[1]))
+else:
+    #Configurable
+    startIndex = 5
+    endIndex = 93
+
+    success = 0
+    total = 0
+    for i in range(startIndex, endIndex):
+        prefix = str(i).zfill(3) + '_'
+        if os.path.isfile(prefix + 'M.wav'):
+            result = detectGender(prefix + 'M.wav')
+            if result == 'M': success += 1
+        else:
+            result = detectGender(prefix + 'K.wav')
+            if result == 'K': success += 1
+        total += 1
+        print('Detected: ' + result + ' Total: ' + str(total) + ' Success: ' + str(success) + ' Accuracy: ' + str(success/total))
 
 for i in range(1, len(sys.argv)): 
     path = sys.argv[i]
