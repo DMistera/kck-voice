@@ -1,20 +1,15 @@
 import librosa
 import librosa.display
-from librosa.display import specshow
-import matplotlib.pyplot as plt
 import scipy
-from scipy.signal import blackmanharris, correlate
+from scipy.signal import correlate
 import numpy as np
 from numpy import argmax, mean, diff, log, nonzero
-from numpy.fft import rfft
 import sys
 import os.path
 from numpy.linalg import norm
-from dtw import dtw
 
 def load(path):
     sig, fs = librosa.load(path)
-    #sig = filterFreq(sig)
     return (sig, fs)
 
 def filterFreq(sig):
@@ -38,20 +33,12 @@ def funfreq(sig, fs):
     # Find the first low point
     d = diff(corr)
     start = nonzero(d > 0)[0][0]
-
-    # Find the next peak after the low point (other than 0 lag).  This bit is
-    # not reliable for long signals, due to the desired peak occurring between
-    # samples, and other peaks appearing higher.
-    # Should use a weighting function to de-emphasize the peaks at longer lags.
     peak = argmax(corr[start:]) + start
     px, py = parabolic(corr, peak)
 
     return fs / px
 
 def calcMeanFunFreq(sig, fs):
-    # split = np.array_split(sig, len(sig)*fs/100)
-    # freqs = [funfreq(s, fs) for s in split]
-    # return np.mean(freqs)
     return funfreq(sig, fs)
 
 def calcIqr(sig, fs):
