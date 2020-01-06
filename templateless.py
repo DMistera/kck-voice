@@ -12,9 +12,6 @@ import os.path
 from numpy.linalg import norm
 from dtw import dtw
 
-template_m = "002_M.wav"
-template_k = "001_K.wav"
-
 def load(path):
     sig, fs = librosa.load(path)
     #sig = filterFreq(sig)
@@ -26,11 +23,15 @@ def filterFreq(sig):
     return np.fft.irfft(freqs)
 
 def parabolic(f, x):
-    xv = 1/2. * (f[x-1] - f[x+1]) / (f[x-1] - 2 * f[x] + f[x+1]) + x
-    yv = f[x] - 1/4. * (f[x-1] - f[x+1]) * (xv - x)
-    return (xv, yv)
+    try:
+        xv = 1/2. * (f[x-1] - f[x+1]) / (f[x-1] - 2 * f[x] + f[x+1]) + x
+        yv = f[x] - 1/4. * (f[x-1] - f[x+1]) * (xv - x)
+        return (xv, yv)
+    except:
+        return (x, f)
 
 def funfreq(sig, fs):
+    # Calculate autocorrelation and throw away the negative lags
     corr = correlate(sig, sig, mode='full')
     corr = corr[len(corr)//2:]
 
@@ -42,7 +43,7 @@ def funfreq(sig, fs):
     # not reliable for long signals, due to the desired peak occurring between
     # samples, and other peaks appearing higher.
     # Should use a weighting function to de-emphasize the peaks at longer lags.
-    peak = argmax(corr[start:]) + start - 1
+    peak = argmax(corr[start:]) + start
     px, py = parabolic(corr, peak)
 
     return fs / px
@@ -69,12 +70,13 @@ def detectGender(path):
     sig, fs = load(path)
     meanfun = calcMeanFunFreq(sig, fs)
     iqr = calcIqr(sig, fs)
-    print("Meanfun: " + str(meanfun));
-    print("IQR: " + str(iqr));
-    if meanfun > 140:
+    if meanfun > 160:
         return 'K'
     else:
-        return 'M'
+        if iqr > 700:
+            return 'M'
+        else:
+            return 'K'
 
 windowMFCC = 512
 windowFFT = 512
@@ -88,18 +90,19 @@ else:
 
     success = 0
     total = 0
+    fail_m = 0
+    fail_k = 0
     for i in range(startIndex, endIndex):
         prefix = str(i).zfill(3) + '_'
         if os.path.isfile(prefix + 'M.wav'):
             result = detectGender(prefix + 'M.wav')
             if result == 'M': success += 1
+            else: fail_m += 1
         else:
             result = detectGender(prefix + 'K.wav')
             if result == 'K': success += 1
+            else: fail_k += 1
         total += 1
         print('Detected: ' + result + ' Total: ' + str(total) + ' Success: ' + str(success) + ' Accuracy: ' + str(success/total))
-
-for i in range(1, len(sys.argv)): 
-    path = sys.argv[i]
-    label = path + ' ' +  detectGender(path)
-    print(label)
+    print(str(fail_m) + ' men detected as women')
+    print(str(fail_k) + ' women detected as man')
