@@ -1,21 +1,15 @@
 import librosa
-import librosa.display
 import scipy
 from scipy.signal import correlate
 import numpy as np
 from numpy import argmax, mean, diff, log, nonzero
 import sys
 import os.path
-from numpy.linalg import norm
 
 def load(path):
-    sig, fs = librosa.load(path)
+    sig, fs = librosa.load(path, sr=None)
+    sig = sig[:fs*5]
     return (sig, fs)
-
-def filterFreq(sig):
-    freqs = np.abs(np.fft.rfft(sig))
-    freqs = [f for index, f in enumerate(freqs) if index < 280]
-    return np.fft.irfft(freqs)
 
 def parabolic(f, x):
     try:
@@ -32,7 +26,10 @@ def funfreq(sig, fs):
 
     # Find the first low point
     d = diff(corr)
-    start = nonzero(d > 0)[0][0]
+    try:
+        start = nonzero(d > 0)[0][0]
+    except:
+        start = 0
     peak = argmax(corr[start:]) + start
     px, py = parabolic(corr, peak)
 
@@ -57,7 +54,7 @@ def detectGender(path):
     sig, fs = load(path)
     meanfun = calcMeanFunFreq(sig, fs)
     iqr = calcIqr(sig, fs)
-    if meanfun > 160:
+    if meanfun > 155:
         return 'K'
     else:
         if iqr > 700:
